@@ -170,9 +170,16 @@ export default function ActiveTimer({
   // Announce & chime initial step when switching phases using latest settings ref
   const triggerPhaseAnnouncements = useCallback((step: TimerStep) => {
     const currentAudio = audioSettingsRef.current;
-    if (currentAudio.chimesEnabled) {
-      playPhaseSwitchChime(currentAudio.volume, step.phase === 'WORK');
+
+    // Wake up Web Speech engine if paused by iOS background policy
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     }
+
+    // Always play phase switch chimes to guarantee audio notification on lock screen
+    playPhaseSwitchChime(currentAudio.volume, step.phase === 'WORK');
     announcePhaseStart(step.phase, step.exerciseName, step.setNumber, step.totalSets, currentAudio);
   }, []);
 
@@ -194,6 +201,13 @@ export default function ActiveTimer({
   useEffect(() => {
     if (isRunning) {
       timerRef.current = setInterval(() => {
+        // Keep mobile speech synthesis active in background
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+        }
+
         setTimeLeft((prev) => {
           setTotalElapsed((t) => t + 1);
           const currentAudio = audioSettingsRef.current;
@@ -210,7 +224,7 @@ export default function ActiveTimer({
               // Finished entire workout!
               setIsRunning(false);
               releaseWakeLock();
-              if (currentAudio.chimesEnabled) playFanfare(currentAudio.volume);
+              playFanfare(currentAudio.volume);
               announcePhaseStart('FINISHED', '', 0, 0, currentAudio);
               onWorkoutComplete(totalElapsed + 1);
               return 0;

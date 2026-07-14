@@ -12,7 +12,13 @@ export function speakText(text: string, settings: AudioSettings) {
 
   try {
     const synth = window.speechSynthesis;
-    synth.cancel(); // Stop prior speeches for immediate prompt delivery
+
+    // Wake up speech synthesis if frozen or paused by iOS/Android background suspension
+    if (synth.paused || synth.pending) {
+      synth.resume();
+    }
+
+    synth.cancel(); // Clear queued speech for immediate delivery
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.volume = settings.volume;
@@ -27,7 +33,19 @@ export function speakText(text: string, settings: AudioSettings) {
       }
     }
 
+    // Workaround for mobile background restriction: resume synthesis after queueing
     synth.speak(utterance);
+
+    setTimeout(() => {
+      if (synth.paused) {
+        synth.resume();
+      }
+    }, 50);
+    setTimeout(() => {
+      if (synth.paused) {
+        synth.resume();
+      }
+    }, 250);
   } catch (e) {
     console.warn('SpeechSynthesis error:', e);
   }
