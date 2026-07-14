@@ -48,7 +48,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       } else {
         setError('An unknown error occurred');
       }
-    } finally {
+    } Finally {
       setLoading(false);
     }
   };
@@ -89,14 +89,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">Full Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                {!name && <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />}
                 <input
                   type="text"
                   required
                   placeholder="Alex Rivera"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="glass-input pl-9"
+                  className={`glass-input transition-all ${name ? 'pl-3' : 'pl-9'}`}
                 />
               </div>
             </div>
@@ -105,14 +105,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              {!email && <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />}
               <input
                 type="email"
                 required
                 placeholder="athlete@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="glass-input pl-9"
+                className={`glass-input transition-all ${email ? 'pl-3' : 'pl-9'}`}
               />
             </div>
           </div>
@@ -120,14 +120,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              {!password && <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />}
               <input
                 type="password"
                 required
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="glass-input pl-9"
+                className={`glass-input transition-all ${password ? 'pl-3' : 'pl-9'}`}
               />
             </div>
           </div>

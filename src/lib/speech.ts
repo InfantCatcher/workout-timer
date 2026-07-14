@@ -44,7 +44,7 @@ export function announcePhaseStart(
 
   switch (phase) {
     case 'PREPARE':
-      speakText(`Get ready! Starting ${exerciseName}`, settings);
+      speakText(`Get ready for ${exerciseName}`, settings);
       break;
     case 'WORK':
       speakText(`${exerciseName}, Set ${setNumber} of ${totalSets}`, settings);

@@ -2,9 +2,26 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { WorkoutPlanData, TimerStep, AudioSettings } from '@/lib/types';
-import { playCountdownBeep, playPhaseSwitchChime, playFanfare, enableBackgroundAudioKeepAlive } from '@/lib/audioSynth';
+import {
+  playCountdownBeep,
+  playPhaseSwitchChime,
+  playFanfare,
+  enableBackgroundAudioKeepAlive,
+  unlockMobileAudio,
+} from '@/lib/audioSynth';
 import { announcePhaseStart } from '@/lib/speech';
-import { Play, Pause, SkipForward, RotateCcw, Volume2, ShieldCheck, Flame, Layers, Clock, ArrowRight } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipForward,
+  RotateCcw,
+  Volume2,
+  ShieldCheck,
+  Flame,
+  Layers,
+  Clock,
+  ArrowRight,
+} from 'lucide-react';
 
 interface ActiveTimerProps {
   plan: WorkoutPlanData;
@@ -19,6 +36,12 @@ export default function ActiveTimer({
   onWorkoutComplete,
   onExitTimer,
 }: ActiveTimerProps) {
+  // Ref to always access latest audioSettings mid-workout without needing timer reset
+  const audioSettingsRef = useRef<AudioSettings>(audioSettings);
+  useEffect(() => {
+    audioSettingsRef.current = audioSettings;
+  }, [audioSettings]);
+
   // Generate flat steps array from WorkoutPlanData
   const buildSteps = useCallback((): TimerStep[] => {
     const steps: TimerStep[] = [];
@@ -144,16 +167,18 @@ export default function ActiveTimer({
     }
   };
 
-  // Announce & chime initial step when switching phases
+  // Announce & chime initial step when switching phases using latest settings ref
   const triggerPhaseAnnouncements = useCallback((step: TimerStep) => {
-    if (audioSettings.chimesEnabled) {
-      playPhaseSwitchChime(audioSettings.volume, step.phase === 'WORK');
+    const currentAudio = audioSettingsRef.current;
+    if (currentAudio.chimesEnabled) {
+      playPhaseSwitchChime(currentAudio.volume, step.phase === 'WORK');
     }
-    announcePhaseStart(step.phase, step.exerciseName, step.setNumber, step.totalSets, audioSettings);
-  }, [audioSettings]);
+    announcePhaseStart(step.phase, step.exerciseName, step.setNumber, step.totalSets, currentAudio);
+  }, []);
 
   // Master Play / Pause Toggle
   const toggleTimer = () => {
+    unlockMobileAudio();
     if (!isRunning) {
       setIsRunning(true);
       enableBackgroundAudioKeepAlive();
@@ -171,6 +196,7 @@ export default function ActiveTimer({
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           setTotalElapsed((t) => t + 1);
+          const currentAudio = audioSettingsRef.current;
 
           if (prev <= 1) {
             // Move to next step
@@ -184,8 +210,8 @@ export default function ActiveTimer({
               // Finished entire workout!
               setIsRunning(false);
               releaseWakeLock();
-              if (audioSettings.chimesEnabled) playFanfare(audioSettings.volume);
-              announcePhaseStart('FINISHED', '', 0, 0, audioSettings);
+              if (currentAudio.chimesEnabled) playFanfare(currentAudio.volume);
+              announcePhaseStart('FINISHED', '', 0, 0, currentAudio);
               onWorkoutComplete(totalElapsed + 1);
               return 0;
             }
@@ -193,8 +219,8 @@ export default function ActiveTimer({
 
           // Countdown Beeps on 3, 2, 1
           const nextVal = prev - 1;
-          if (nextVal <= 3 && nextVal >= 1 && audioSettings.chimesEnabled) {
-            playCountdownBeep(audioSettings.volume, 660, nextVal === 1);
+          if (nextVal <= 3 && nextVal >= 1 && currentAudio.chimesEnabled) {
+            playCountdownBeep(currentAudio.volume, 660, nextVal === 1);
           }
 
           return nextVal;
@@ -207,9 +233,11 @@ export default function ActiveTimer({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, currentStepIndex, audioSettings, triggerPhaseAnnouncements, onWorkoutComplete, totalElapsed]);
+  }, [isRunning, currentStepIndex, triggerPhaseAnnouncements, onWorkoutComplete, totalElapsed]);
 
+  // Synchronized Skip Step Functions: Updates currentStepIndex & recalculates macro progress
   const handleSkipNext = () => {
+    unlockMobileAudio();
     if (currentStepIndex < stepsRef.current.length - 1) {
       const nextIdx = currentStepIndex + 1;
       const nextStep = stepsRef.current[nextIdx];
@@ -220,6 +248,7 @@ export default function ActiveTimer({
   };
 
   const handleSkipPrev = () => {
+    unlockMobileAudio();
     if (currentStepIndex > 0) {
       const prevIdx = currentStepIndex - 1;
       const prevStep = stepsRef.current[prevIdx];
@@ -231,9 +260,17 @@ export default function ActiveTimer({
 
   // Timer Circle Progress Math
   const progressPercent = Math.max(0, Math.min(100, (timeLeft / currentStep.durationSeconds) * 100));
-  const strokeDashoffset = 754 - (754 * progressPercent) / 100; // r=120 -> circumference ~754
 
-  const overallProgress = Math.min(100, Math.round((totalElapsed / (totalWorkoutDuration || 1)) * 100));
+  // Dynamic Overall Macro Workout Progress (Syncs accurately when steps are skipped)
+  const elapsedPreviousStepsSecs = stepsRef.current
+    .slice(0, currentStepIndex)
+    .reduce((acc, step) => acc + step.durationSeconds, 0);
+  const currentStepElapsedSecs = Math.max(0, currentStep.durationSeconds - timeLeft);
+  const totalAccurateElapsedSecs = elapsedPreviousStepsSecs + currentStepElapsedSecs;
+  const overallProgress = Math.min(
+    100,
+    Math.round((totalAccurateElapsedSecs / (totalWorkoutDuration || 1)) * 100)
+  );
 
   // Determine current phase visual badge colors
   const getPhaseHeader = () => {
@@ -347,7 +384,7 @@ export default function ActiveTimer({
 
       {/* Bottom Deck: Controls & Macro Overall Progress */}
       <div className="w-full max-w-xl space-y-4 mt-6">
-        {/* Overall Workout Progress Bar */}
+        {/* Overall Workout Progress Bar (Synced on set skipping) */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-bold text-slate-400">
             <span>Overall Progress</span>
@@ -355,7 +392,7 @@ export default function ActiveTimer({
           </div>
           <div className="w-full h-2.5 rounded-full bg-slate-900 border border-white/5 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+              className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300"
               style={{ width: `${overallProgress}%` }}
             />
           </div>
