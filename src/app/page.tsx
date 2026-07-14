@@ -179,6 +179,7 @@ export default function Home() {
         onOpenAudioSettings={() => setIsAudioSettingsOpen(true)}
         activePlanTitle={currentPlan.title}
         onSelectPresetsModal={() => setIsPresetsOpen(true)}
+        onGoHome={() => setView('SETUP')}
       />
 
       {/* Main Container View Switch */}

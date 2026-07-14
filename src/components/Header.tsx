@@ -11,6 +11,7 @@ interface HeaderProps {
   onOpenAudioSettings: () => void;
   activePlanTitle: string;
   onSelectPresetsModal: () => void;
+  onGoHome: () => void;
 }
 
 export default function Header({
@@ -20,24 +21,28 @@ export default function Header({
   onOpenAudioSettings,
   activePlanTitle,
   onSelectPresetsModal,
+  onGoHome,
 }: HeaderProps) {
   return (
     <header className="w-full border-b border-white/10 bg-black/40 backdrop-blur-md sticky top-0 z-30">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-        {/* Brand Logo & Title */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-black shadow-lg shadow-cyan-500/20">
+        {/* Brand Logo & Title (Clickable Homepage Trigger) */}
+        <button
+          onClick={onGoHome}
+          className="flex items-center gap-2.5 text-left group hover:opacity-85 transition-all border-none bg-transparent cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-blue-600 flex items-center justify-center text-black shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
             <Timer className="w-6 h-6 stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="font-extrabold text-lg tracking-tight text-white leading-none">
+            <h1 className="font-extrabold text-lg tracking-tight text-white leading-none group-hover:text-cyan-300 transition-colors">
               PULSE<span className="text-cyan-400 font-normal">TIME</span>
             </h1>
             <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
               Workout Timekeeper
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Routine Name Indicator / Preset Switcher */}
         <button
